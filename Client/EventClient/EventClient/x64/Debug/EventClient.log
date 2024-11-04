@@ -1,0 +1,9 @@
+﻿  EventClient.cpp
+D:\Cproject\Client\EventClient\EventClient\EventClient.cpp(38,36): warning C4101: 'recommendThread' :참조되지 않은 지역 변수입니다.
+D:\Cproject\Client\EventClient\EventClient\EventClient.cpp(98,39): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+D:\Cproject\Client\EventClient\EventClient\EventClient.cpp(276,21): warning C4477: 'fscanf_s' : 서식 문자열 '%s'에 'unsigned int' 형식의 인수가 필요하지만 variadic 인수 2의 형식이 'size_t'입니다.
+  D:\Cproject\Client\EventClient\EventClient\EventClient.cpp(276,21):
+  이 인수는 버퍼 크기로 사용됩니다.
+  
+D:\Cproject\Client\EventClient\EventClient\EventClient.cpp(279,33): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+  EventClient.vcxproj -> D:\Cproject\Client\EventClient\x64\Debug\EventClient.exe

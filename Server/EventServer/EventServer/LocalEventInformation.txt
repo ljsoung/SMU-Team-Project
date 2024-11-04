@@ -1,0 +1,10 @@
+01|KoreaBeautyFestival|Seoul|06-01|06-30|https://korean.visitkorea.or.kr/kfes/detail/fstvlDetail.do?fstvlCntntsId=b73efaf4-778f-44fb-b97a-c18056c6d8a1&cntntsNm=%EC%BD%94%EB%A6%AC%EC%95%84%EB%B7%B0%ED%8B%B0%ED%8E%98%EC%8A%A4%ED%8B%B0%EB%B2%8C\0
+02|SeoulFamilyFestival|Seoul|06-21|06-23|https://korean.visitkorea.or.kr/kfes/detail/fstvlDetail.do?fstvlCntntsId=29f3f43b-2379-4d45-8d91-036b91c27607&cntntsNm=%EC%84%9C%EC%9A%B8K%EA%B0%80%EC%A1%B1%EC%B6%95%EC%A0%9C\0
+03|OrganicDay|Seoul|06-01|06-01|https://korean.visitkorea.or.kr/kfes/detail/fstvlDetail.do?fstvlCntntsId=22db999a-be6a-46c2-a4f9-fe9dd7631546&cntntsNm=%EC%9C%A0%EA%B8%B0%EB%86%8D%EB%8D%B0%EC%9D%B4\0
+04|TomatoFestival|GG|06-14|06-16|https://korean.visitkorea.or.kr/kfes/detail/fstvlDetail.do?fstvlCntntsId=355a548e-438e-4745-b388-774b506f3030&cntntsNm=%ED%87%B4%EC%B4%8C%ED%86%A0%EB%A7%88%ED%86%A0%EC%B6%95%EC%A0%9C\0
+05|LavenderFestival|GG|06-08|06-23|https://korean.visitkorea.or.kr/kfes/detail/fstvlDetail.do?fstvlCntntsId=848e50c9-b824-4683-a028-2809a5ec23bb&cntntsNm=%EB%AC%B4%EB%A6%89%EB%B3%84%EC%9C%A0%EC%B2%9C%EC%A7%80%EB%9D%BC%EB%B2%A4%EB%8D%94%EC%B6%95%EC%A0%9C\0
+06|CampLakeFastival|GG|06-14|06-23|https://korean.visitkorea.or.kr/kfes/detail/fstvlDetail.do?fstvlCntntsId=1956b24f-8112-46d0-8f1f-af4a62d0f4c1&cntntsNm=%EC%9D%B8%EC%A0%9C%EC%BA%A0%ED%94%84%EB%A0%88%EC%9D%B4%ED%81%AC%ED%8E%98%EC%8A%A4%ED%8B%B0%EB%B2%8C\0
+07|IncheonhaborCulture|InCheon|06-08|06-09|https://korean.visitkorea.or.kr/kfes/detail/fstvlDetail.do?fstvlCntntsId=387cfe24-b54f-464d-a06d-c1599d7eba59&cntntsNm=%EC%9D%B8%EC%B2%9C%EA%B0%9C%ED%95%AD%EC%9E%A5%EB%AC%B8%ED%99%94%EC%9C%A0%EC%82%B0%EC%95%BC%ED%96%89\0
+08|IncheonArtBookFair|InCheon|06-01|06-01|https://korean.visitkorea.or.kr/kfes/detail/fstvlDetail.do?fstvlCntntsId=2ba063f5-3ace-4e64-b492-52416a761ffb&cntntsNm=%EC%9D%B8%EC%B2%9C%EC%95%84%ED%8A%B8%EB%B6%81%ED%8E%98%EC%96%B4\0
+09|AraBoutRouteKayakFestival|InCheon|06-15|06-15|https://korean.visitkorea.or.kr/kfes/detail/fstvlDetail.do?fstvlCntntsId=2818ef25-7563-484e-9622-90baf348e02d&cntntsNm=%EC%A0%95%EC%84%9C%EC%A7%84%EC%95%84%EB%9D%BC%EB%B1%83%EA%B8%B8%EC%B9%B4%EC%95%BD%EC%B6%95%EC%A0%9C\0
+

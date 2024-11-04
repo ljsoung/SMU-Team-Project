@@ -1,0 +1,7 @@
+﻿  EventServer.cpp
+D:\Cproject\Server\EventServer\EventServer\EventServer.cpp(175,52): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+D:\Cproject\Server\EventServer\EventServer\EventServer.cpp(179,52): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+D:\Cproject\Server\EventServer\EventServer\EventServer.cpp(255,15): warning C4244: '인수': 'time_t'에서 'unsigned int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+D:\Cproject\Server\EventServer\EventServer\EventServer.cpp(277,48): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+D:\Cproject\Server\EventServer\EventServer\EventServer.cpp(318,66): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+  EventServer.vcxproj -> D:\Cproject\Server\EventServer\x64\Debug\EventServer.exe
