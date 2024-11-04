@@ -1,0 +1,458 @@
+#define _WINSOCK_DEPRECATED_NO_WARNINGS  //비주얼스튜디오 환경에서 개발시 소켓관련 경고 무시용
+#define _CRT_SECURE_NO_WARNINGS  //비주얼스튜디오 환경에서 개발시 입력관련 경고 무시용
+#pragma comment(lib, "ws2_32")  //비주얼스튜디오 환경에서 개발시 소켓 라이브러리 지정용
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <winsock2.h>
+#include <Windows.h>
+#include <process.h>
+#include <time.h>
+
+#define BUF_SIZE 500
+#define MAX_CLNT 256
+#define MAX_EVENTS 500
+
+typedef struct localevent {
+    int No;
+    char Name[100];
+    char Location[15];
+    char Date_First[10];
+    char Date_Last[10];
+    char url[300];
+    struct localevent* next;
+    //추후에 추가 및 수정 사항 있으시면 서버 환경에 맞게 수정할 것!!! 
+} EVENT;
+
+void getEventData(FILE* fp);    // 행사 정보 불러오기
+unsigned WINAPI HandleClient(void* arg);    // 소켓 통신 관리
+void eventRecommend(SOCKET* clientSocks);    // 행사 랜덤 3개 추천
+void add_event_to_list(EVENT** head, EVENT* temp_event);    //검색 및 정렬된 행사 정보 저장
+void sendSortedEventsToClient(SOCKET clientSocks, EVENT* sorted_head);    // 클라이언트로 행사정보 전송
+void searchEvents(SOCKET clientSocks, const char* msg);    // 행사 날짜, 지역명 검색 & 행사 상세정보 검색
+EVENT* sort_by_date(EVENT* head);    // 날짜 오름차순 정렬
+EVENT* sort_by_name(EVENT* head);    // 행사명 오름차순 정렬
+
+
+int clientCount = 0;
+SOCKET clientSocks[MAX_CLNT];//클라이언트 소켓 보관용 배열
+EVENT* local_event_head = NULL; // 전체 행사 정보 연결리스트의 헤드
+
+int main(int argc, char* argv[]) {
+
+    FILE* fpin;
+    WSADATA wsaData;
+    SOCKET serverSock, clientSock;
+    SOCKADDR_IN serverAddr, clientAddr;
+    int clientAddrSize;
+    HANDLE hThread;
+    int portNum;
+
+    if ((fpin = fopen("LocalEventInformation.txt", "r")) == NULL) {
+        printf("File Open Error\n");
+        exit(-1);
+    }
+
+    getEventData(fpin);
+
+    //소켓 준비하는 단계 
+    portNum = 55557; //과제 조건: 포트 넘버 55557로 고정, 클라이언트도 마찬가지 
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
+    serverSock = socket(PF_INET, SOCK_STREAM, 0);
+    memset(&serverAddr, 0, sizeof(serverAddr));
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serverAddr.sin_port = htons(portNum);
+
+    // 소캣 활성화  
+    bind(serverSock, (SOCKADDR*)&serverAddr, sizeof(serverAddr));
+    listen(serverSock, 5);
+    printf("Server : Ready to Client Connection\n");
+
+    // 클라이언트 접속 대기 및 허용    및 클라이언트 별 스레드 생성
+    while (1) {
+        clientAddrSize = sizeof(clientAddr);
+        clientSock = accept(serverSock, (SOCKADDR*)&clientAddr, &clientAddrSize);//서버에게 전달된 클라이언트 소켓을 clientSock에 전달
+        clientSocks[clientCount++] = clientSock;//클라이언트 소켓배열에 방금 가져온 소켓 주소를 전달
+        hThread = (HANDLE)_beginthreadex(NULL, 0, HandleClient, (void*)&clientSock, 0, NULL);//HandleClient 쓰레드 실행, clientSock을 매개변수로 전달
+        printf("Connected Client IP : %s\n", inet_ntoa(clientAddr.sin_addr));
+    }
+
+    // &&추후 클라이언트의 소켓 종료 요청시 서버에서 종료할 수 있도록 하는 기능 추가 예정&& 
+
+    closesocket(serverSock);
+    WSACleanup();
+
+    return 0;
+}
+
+void getEventData(FILE* fp) {
+    int Gno;
+    char Gname[100];
+    char Glocation[15];
+    char GFdate[10];
+    char GLdate[10];
+    char Gurl[300];
+    EVENT* temp_event_head = NULL; // 로컬 이벤트 헤드
+
+    printf("Server : Initiation of Data Load\n");
+
+    while (fscanf(fp, "%d|%99[^|]|%14[^|]|%9[^|]|%9[^|]|%299[^\n]\n", &Gno, Gname, Glocation, GFdate, GLdate, Gurl) == 6) {
+        EVENT* new_event = (EVENT*)malloc(sizeof(EVENT));
+        if (new_event == NULL) {
+            printf("메모리 할당 실패.\n");
+            exit(1);
+        }
+
+        new_event->No = Gno;
+        strcpy(new_event->Name, Gname);
+        strcpy(new_event->Location, Glocation);
+        strcpy(new_event->Date_First, GFdate);
+        strcpy(new_event->Date_Last, GLdate);
+        strcpy(new_event->url, Gurl);
+        new_event->next = NULL;
+
+        if (temp_event_head == NULL) {
+            // 연결 리스트가 비어있을 경우
+            temp_event_head = new_event;
+        }
+        else {
+            // 연결 리스트가 비어있지 않을 경우, 맨 끝에 새 노드를 추가
+            EVENT* current = temp_event_head;
+            while (current->next != NULL) {
+                current = current->next;
+            }
+            current->next = new_event;
+        }
+    }
+
+    printf("End of Data Load\n");
+
+    fclose(fp);
+
+    // getEventData 함수가 끝나기 전에 로컬 이벤트 헤드를 전역 변수에 할당
+    local_event_head = temp_event_head;
+}
+
+unsigned WINAPI HandleClient(void* arg) {
+    SOCKET clientSock = *((SOCKET*)arg);
+    int strLen = 0;
+    char msg[BUF_SIZE] = "";
+    int i = 0;
+    char buffer[BUF_SIZE];
+
+    eventRecommend(&clientSock);
+    printf("\nEventRecommend Complete\n");
+
+    while (1) {
+        memset(msg, 0, sizeof(msg)); // 버퍼 초기화
+        strLen = recv(clientSock, msg, BUF_SIZE - 1, 0);
+        if (strLen <= 0) {
+            printf("Client disconnected or error occurred\n");
+            break;
+        }
+
+        msg[strLen] = '\0';
+        printf("Received message from client: %s\n", msg);
+        EVENT* temp = local_event_head;
+        int foundEvent = 0;
+
+        if (strcmp(msg, "Today") == 0 || strcmp(msg, "Month") == 0) {
+            printf("Date Search\n");
+            searchEvents(clientSock, msg);
+        }
+        else {
+            while (temp != NULL && !foundEvent) {
+                if (strcmp(msg, temp->Location) == 0) {
+                    printf("Location Search\n");
+                    searchEvents(clientSock, msg);
+                    foundEvent = 1;
+                }
+                else if (strcmp(msg, temp->Name) == 0) {
+                    printf("Detail Search\n");
+                    snprintf(buffer, sizeof(buffer), "Event Name: %s\n", temp->Name);
+                    send(clientSock, buffer, strlen(buffer), 0);
+                    printf("%s\n", buffer);
+                    memset(buffer, 0, sizeof(buffer));
+                    snprintf(buffer, sizeof(buffer), "Event Url: %s\n", temp->url);
+                    send(clientSock, buffer, strlen(buffer), 0);
+                    printf("%s\n", buffer);
+                    memset(buffer, 0, sizeof(buffer));
+                }
+                temp = temp->next;
+            }
+        }
+
+    }
+
+    printf("Client left...\n");
+
+    for (i = 0; i < clientCount; i++) {//배열의 갯수만큼
+        if (clientSock == clientSocks[i]) {//만약 현재 clientSock값이 배열의 값과 같다면
+            while (i++ < clientCount - 1)//클라이언트 개수 만큼
+                clientSocks[i] = clientSocks[i + 1];//앞으로 땡긴다.
+            break;
+        }
+    }
+
+    clientCount--;//클라이언트 개수 하나 감소
+
+    closesocket(clientSock);//소켓을 종료한다.
+    return 0;
+}
+
+void eventRecommend(SOCKET* clientSock) {
+    time_t now;
+    struct tm* current_time;
+    char start_week[15];
+    char end_week[15];
+    int event_count = 0;
+    int i = 0;
+    int j = 0;
+
+    // 현재 시간 가져오기
+    time(&now);
+    current_time = localtime(&now);
+
+    // start_week와 end_week 설정
+    struct tm start_week_tm = *current_time;
+    struct tm end_week_tm = *current_time;
+    end_week_tm.tm_mday = end_week_tm.tm_mday + 7;
+    mktime(&start_week_tm);
+    mktime(&end_week_tm);
+
+    strftime(start_week, sizeof(start_week), "%m-%d", &start_week_tm);
+    strftime(end_week, sizeof(end_week), "%m-%d", &end_week_tm);
+
+    printf("\neventRecommend: start week is %s, end week is %s\n", start_week, end_week);
+
+    printf("\nEvent Information\n");
+    EVENT* Temp_event = NULL;            //순회 중 저장용 구조체
+
+    EVENT* RC_event = local_event_head;   // 전체 행사 정보 리스트의 시작을 가리키는 포인터
+    EVENT* select_event_head[MAX_EVENTS]; // 선택된 이번 주의 행사 정보를 담는 배열
+
+    while (RC_event != NULL) {
+        if ((strcmp(RC_event->Date_First, start_week) >= 0 && strcmp(RC_event->Date_First, end_week) <= 0) ||
+            (strcmp(RC_event->Date_First, start_week) <= 0 && strcmp(RC_event->Date_Last, start_week) >= 0)) {
+
+            // 배열 요소에 메모리 할당 후 데이터 복사
+            select_event_head[event_count] = (EVENT*)malloc(sizeof(EVENT));
+            if (select_event_head[event_count] == NULL) {
+                printf("메모리 할당 실패.");
+                exit(1);
+            }
+            *(select_event_head[event_count]) = *RC_event;   // RC_event의 정보를 배열에 복사
+
+            event_count++;   // 선택된 이벤트 수 증가
+        }
+        printf("%s\n", RC_event->Name);// 현재 이벤트의 이름 출력
+        RC_event = RC_event->next;   // 다음 이벤트로 이동
+    }
+    printf("\n");
+
+    srand(time(NULL));
+
+    int selected_indexes[3] = { -1, -1, -1 }; // 선택된 인덱스를 저장하는 배열 초기화
+    for (i = 0; i < 3; i++) {
+        int rand_num;
+        do {
+            rand_num = rand() % event_count; // 랜덤 인덱스 선택
+        } while (selected_indexes[0] == rand_num || selected_indexes[1] == rand_num || selected_indexes[2] == rand_num);
+
+        selected_indexes[i] = rand_num; // 선택된 인덱스 저장
+
+        Temp_event = select_event_head[rand_num]; // 배열 요소에 접근하여 할당
+
+        // 선택된 행사 정보를 버퍼에 추가
+        char buffer[BUF_SIZE];
+        snprintf(buffer, sizeof(buffer), "%s|%s|%s|%s",
+            Temp_event->Name, Temp_event->Location,
+            Temp_event->Date_First, Temp_event->Date_Last);
+
+        // 버퍼에 저장된 행사 정보를 클라이언트에 전송
+        for (j = 0; j < clientCount; j++) {
+            printf("%s\n", buffer); // 디버그를 위해 출력
+            send(clientSocks[j], buffer, strlen(buffer), 0);
+            Sleep(10);
+        }
+    }
+
+    // 할당된 메모리 해제
+    for (i = 0; i < event_count; i++) {
+        free(select_event_head[i]);
+    }
+}
+
+void add_event_to_list(EVENT** head, EVENT* temp_event) {
+    EVENT* new_event = (EVENT*)malloc(sizeof(EVENT));
+    if (new_event == NULL) {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(1);
+    }
+
+    new_event->No = temp_event->No;
+    strcpy(new_event->Name, temp_event->Name);
+    strcpy(new_event->Location, temp_event->Location);
+    strcpy(new_event->Date_First, temp_event->Date_First);
+    strcpy(new_event->Date_Last, temp_event->Date_Last);
+
+    new_event->next = *head;
+    *head = new_event;
+}
+
+void sendSortedEventsToClient(SOCKET clientSock, EVENT* sorted_head) {
+    char buffer[BUF_SIZE];
+    memset(buffer, 0, sizeof(buffer));
+
+    EVENT* current_event = sorted_head;
+    while (current_event != NULL) {
+        snprintf(buffer, sizeof(buffer), "%d|%s|%s|%s|%s",
+            current_event->No, current_event->Name, current_event->Location, current_event->Date_First, current_event->Date_Last);
+
+        // 디버그: 버퍼에 저장된 이벤트 정보 출력
+        printf("\nSending to client: %s\n", buffer);
+
+        for (int i = 0; i < clientCount; ++i) {
+            int sent_length = send(clientSocks[i], buffer, strlen(buffer), 0);
+            if (sent_length == SOCKET_ERROR) {
+                printf("Error sending data to client: %d\n", WSAGetLastError());
+                break; // 에러 처리나 종료 로직 추가 필요
+            }
+        }
+
+        // 버퍼 초기화
+        memset(buffer, 0, sizeof(buffer));
+
+        // 다음 이벤트로 이동
+        current_event = current_event->next;
+    }
+}
+
+void searchEvents(SOCKET clientSock, const char* msg) {
+    EVENT* temp_event = local_event_head;   //// 전체 행사 리스트
+    EVENT* unsort_event = (EVENT*)malloc(sizeof(EVENT));    //정렬되지 않은 행사 리스트
+    EVENT* head = NULL; // 검색된 행사의 헤드 포인터
+    char today_month_date[15];  //오늘의 월-일을 저장하는 변수
+    char month_date[5]; // 월을 저장하는 변수
+    char today_month_date_copy[15]; //strtok 할 변수
+    char date_first_copy[15];       //strtok 할 변수
+    char date_last_copy[15];        //strtok 할 변수
+    char Fmonth[5]; //행사 시작 월 저장 변수
+    char Lmonth[5]; //행사 종료 월 저장 변수
+    char* token;    //문자열 토큰을 저장할 포인터
+
+    time_t now;
+    struct tm* current_time;
+    // 현재 시간 가져오기
+    time(&now);
+    current_time = localtime(&now);
+    struct tm today_month_date_tm = *current_time;
+
+    mktime(&today_month_date_tm);
+
+    strftime(today_month_date, sizeof(today_month_date), "%m-%d", &today_month_date_tm);
+    strcpy(today_month_date_copy, today_month_date);
+
+    token = strtok(today_month_date_copy, "-");
+    strcpy(month_date, token);
+
+    //행사 검색
+    while (temp_event != NULL) {
+        if (strcmp(temp_event->Location, msg) == 0) {    //지역명 검색 
+            add_event_to_list(&head, temp_event);
+        }
+
+        else if (strcmp(msg, "Today") == 0 || strcmp(msg, "Month") == 0) {    //날짜 검색
+
+            if (strcmp(msg, "Today") == 0) {    // 진행 중인 행사
+                if (strcmp(temp_event->Date_First, today_month_date) <= 0 && strcmp(temp_event->Date_Last, today_month_date) >= 0) {
+                    add_event_to_list(&head, temp_event);
+                }
+            }
+
+            else if (strcmp(msg, "Month") == 0) {    // 이번 달의 행사 //종료된 행사 제거
+                strcpy(date_first_copy, temp_event->Date_First);
+                strcpy(date_last_copy, temp_event->Date_Last);
+                token = strtok(date_first_copy, "-");
+                strcpy(Fmonth, token);
+                token = strtok(date_last_copy, "-");
+                strcpy(Lmonth, token);
+
+                if (strcmp(Fmonth, month_date) == 0 || strcmp(Lmonth, month_date) == 0) {    // 이번 달의 행사    
+                    if (strcmp(temp_event->Date_First, today_month_date) <= 0 && strcmp(temp_event->Date_Last, today_month_date) >= 0) {    // 진행 중인 행사
+                        add_event_to_list(&head, temp_event);
+                    }
+                    else if (strcmp(temp_event->Date_First, today_month_date) >= 0) {    // 진행 전의 행사
+                        add_event_to_list(&head, temp_event);
+                    }
+                }
+            }
+        }
+        temp_event = temp_event->next;
+    }
+    // 정렬
+    if (strcmp(msg, "Today") == 0 || strcmp(msg, "Month") == 0) {
+        head = sort_by_date(head);  // 날짜 순서 정렬
+    }
+    else {
+        head = sort_by_name(head);  // 이름 순서 정렬
+    }
+
+    sendSortedEventsToClient(clientSock, head);
+}
+
+EVENT* sort_by_date(EVENT* head) {
+    if (!head || !head->next) {        // 비어있거나 1개만 있는 경우
+        return head;
+    }
+    EVENT* sorted = NULL;
+
+    while (head != NULL) {
+        EVENT* current = head;    // 정렬해야 할 행사
+        head = head->next;
+
+        if (sorted == NULL || (strcmp(current->Date_First, sorted->Date_First) < 0)) {
+            current->next = sorted;
+            sorted = current;
+        }
+        else {
+            EVENT* temp = sorted;
+            while (temp->next != NULL && (strcmp(current->Date_First, temp->next->Date_First) >= 0)) {
+                temp = temp->next;
+            }
+            current->next = temp->next;
+            temp->next = current;
+        }
+    }
+
+    return sorted;
+}
+
+EVENT* sort_by_name(EVENT* head) {
+    if (!head || !head->next) {
+        return head;
+    }
+    EVENT* sorted = NULL;
+
+    while (head != NULL) {
+        EVENT* current = head;
+        head = head->next;
+
+        if (sorted == NULL || strcmp(current->Name, sorted->Name) < 0) {
+            current->next = sorted;
+            sorted = current;
+        }
+        else {
+            EVENT* temp = sorted;
+            while (temp->next != NULL && strcmp(current->Name, temp->next->Name) >= 0) {
+                temp = temp->next;
+            }
+            current->next = temp->next;
+            temp->next = current;
+        }
+    }
+
+    return sorted;
+}
